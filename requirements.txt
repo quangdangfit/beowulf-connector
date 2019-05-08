@@ -1,0 +1,6 @@
+Django==2.2.1
+django-dotenv==1.4.2
+djangorestframework==3.9.3
+psycopg2-binary==2.8.2
+pytz==2019.1
+sqlparse==0.3.0
