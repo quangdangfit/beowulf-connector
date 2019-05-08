@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from api.models import Account
 
-# Create your views here.
+
+class AccountView(APIView):
+    def post(self, request):
+        return Response('POST Account!')
