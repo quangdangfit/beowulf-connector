@@ -1,0 +1,12 @@
+.idea/
+.venv/
+.env
+
+# dotfiles
+.*
+!.gitignore
+!.env.sample
+
+# compiled python files
+*.py[co]
+__pycache__/
