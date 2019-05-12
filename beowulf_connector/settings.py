@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
-    'api',
+    'rest_framework.apps.RestFrameworkConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -121,4 +121,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = os.environ.get('STATIC_URL', '/static/')
+
+ACTIVE_KEY = os.environ.get('ACTIVE_KEY')
+
+CREATOR_NAME = os.environ.get('CREATOR_NAME', 'alice')
+CREATOR_DEFAULT_PWD = os.environ.get('CREATOR_DEFAULT_PWD', 'password')
