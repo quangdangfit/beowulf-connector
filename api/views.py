@@ -1,13 +1,15 @@
 import hashlib
 import json
 import os
-from django.http import JsonResponse
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from beowulf_connector import settings
 from beowulf_connector.wsgi import commit, creator
 from api.models import Account, Transfer
+
+from wallet_file.wallet_file import wallet_dir
 
 
 class AccountView(APIView):
@@ -26,14 +28,13 @@ class AccountView(APIView):
                                                 password_seed="password",
                                                 password_wallet=password)
 
-            from wallet_file.wallet_file import wallet_dir
             wallet_filename = os.path.join(wallet_dir, username + ".json")
 
             with open(wallet_filename) as json_data:
                 cipher_data = json.load(json_data)
 
             data["wallet"] = cipher_data
-            return JsonResponse(data)
+            Response(data={"msg": 'Success!', "data": data})
 
         except Exception as e:
             return Response(data={"msg": repr(e)}, status=500)
@@ -42,15 +43,22 @@ class AccountView(APIView):
 class TransferView(APIView):
     def post(self, request):
         try:
-            _data = request.data
-            sender = _data.get('sender')
-            receiver = _data.get('receiver')
-            amount = _data.get('amount')
-            memo = _data.get('memo')
-            asset = _data.get('asset')
+            request_data = request.data
 
-            transfer = Transfer.objects.create(sender=sender, receiver=receiver, amount=amount, memo=memo, asset=asset)
+            sender = request_data.get('sender')
+            receiver = request_data.get('receiver')
+            amount = request_data.get('amount')
+            memo = request_data.get('memo')
+            asset = request_data.get('asset')
+
+            fee = settings.TRANSFER_FEE
+            asset_fee = settings.TRANSFER_ASSET_FEE
+
+            Transfer.objects.create(sender=sender, receiver=receiver, amount=amount, memo=memo, asset=asset)
+
+            data = commit.transfer(receiver, amount, asset, fee, asset_fee, memo,sender)
+
+            return Response(data={"msg": 'Success!', "data": data})
+
         except Exception as e:
-            return Response(repr(e))
-
-        return Response('POST Account!')
+            return Response(data={"msg": repr(e)}, status=500)

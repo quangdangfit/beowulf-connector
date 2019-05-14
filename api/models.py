@@ -21,6 +21,7 @@ class Transfer(models.Model):
     amount = models.IntegerField(default=0)
     memo = models.TextField()
     asset = models.CharField(max_length=50)
+    timestamp = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return "Transfer {} to {}".format(self.sender, self.receiver)
