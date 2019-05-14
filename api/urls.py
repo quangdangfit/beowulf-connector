@@ -15,10 +15,11 @@ Including another URLconf
 """
 from django.urls import path
 
-from api.views import AccountView, TransferView
+from api.views import AccountView, TransferView, PurchaseView
 
 
 urlpatterns = [
     path('accounts/', AccountView.as_view()),
     path('transfers/', TransferView.as_view()),
+    path('purchases/', PurchaseView.as_view()),
 ]

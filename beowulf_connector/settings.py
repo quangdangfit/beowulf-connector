@@ -128,5 +128,8 @@ ACTIVE_KEY = os.environ.get('ACTIVE_KEY')
 CREATOR_NAME = os.environ.get('CREATOR_NAME', 'alice')
 CREATOR_DEFAULT_PWD = os.environ.get('CREATOR_DEFAULT_PWD', 'password')
 
-TRANSFER_FEE = os.environ.get('TRANSFER_FEE', 0.1)
+TRANSFER_FEE = float(os.environ.get('TRANSFER_FEE', 0.1))
 TRANSFER_ASSET_FEE = os.environ.get('TRANSFER_ASSET_FEE', 'W')
+
+PURCHASE_AMOUNT = int(os.environ.get('PURCHASE_AMOUNT', 500))
+PURCHASE_ASSET = os.environ.get('PURCHASE_ASSET', 'BWF')
