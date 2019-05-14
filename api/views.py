@@ -75,6 +75,22 @@ class TransferView(APIView):
 
 
 class PurchaseView(APIView):
+    def get(self, request):
+        try:
+            account_name = request.query_params.get('account_name')
+            purchase = Purchase.objects.filter(account_name=account_name).first()
+
+            data = {
+                'account_name': account_name,
+                'surplus': (purchase and purchase.surplus) or 0,
+                'expired_date': (purchase and purchase.expired_date) or False,
+            }
+
+            return Response(data={"msg": 'Success!', "data": data})
+
+        except Exception as e:
+            return Response(data={"msg": repr(e)}, status=500)
+
     def post(self, request):
         sid = transaction.savepoint()
         try:
@@ -92,12 +108,8 @@ class PurchaseView(APIView):
             Transfer.objects.create(sender=account_name, receiver=receiver, amount=amount, memo=memo, asset=asset)
 
             # Create Purchase, get surplus if purchase is already exists, add surplus to amount
-            purchase = Purchase.objects.filter(account_name=account_name).first()
-
-            if purchase:
-                amount += purchase.surplus
-            else:
-                purchase = Purchase.objects.create(account_name=account_name)
+            purchase = Purchase.objects.get_or_create(account_name=account_name)
+            amount += (purchase.surplus or 0)
 
             purchase_amount = settings.PURCHASE_AMOUNT
             surplus = amount % purchase_amount
