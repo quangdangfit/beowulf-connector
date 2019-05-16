@@ -6,6 +6,7 @@ class Account(models.Model):
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
+    host = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
         return self.username

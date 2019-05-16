@@ -23,9 +23,10 @@ class AccountView(APIView):
             username = request_data.get('username')
             password = request_data.get('password')
             email = request_data.get('email')
+            host = request_data.get('ip_host')
 
             password = hashlib.sha256(password.encode()).hexdigest()
-            Account.objects.create(username=username, password=password, email=email)
+            Account.objects.create(username=username, password=password, email=email, host=host)
 
             data = commit.create_account_simple(account_name=username,
                                                 creator=creator,
@@ -78,13 +79,17 @@ class PurchaseView(APIView):
     def get(self, request):
         try:
             account_name = request.query_params.get('account_name')
-            purchase = Purchase.objects.filter(account_name=account_name).first()
+            purchases = Purchase.objects.all()
 
-            data = {
-                'account_name': account_name,
-                'surplus': (purchase and purchase.surplus) or 0,
-                'expired_date': (purchase and purchase.expired_date) or False,
-            }
+            if account_name:
+                account_name = account_name.split(',')
+                purchases = purchases.filter(account_name__in=account_name)
+
+            data = [{
+                'account_name': p.account_name,
+                'surplus': p.surplus or 0,
+                'expired_date': p.expired_date or False,
+            } for p in purchases]
 
             return Response(data={"msg": 'Success!', "data": data})
 
