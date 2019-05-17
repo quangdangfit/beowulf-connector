@@ -102,7 +102,7 @@ class PurchaseView(APIView):
             request_data = request.data
 
             account_name = request_data.get('sender')
-            receiver = settings.CREATOR_NAME
+            receiver = creator
             amount = request_data.get('amount')
             memo = request_data.get('memo')
             asset = settings.PURCHASE_ASSET
