@@ -18,7 +18,7 @@ from django.urls import path, include
 from rest_framework.documentation import include_docs_urls
 from rest_framework_swagger.views import get_swagger_view
 
-from api.schemas import SwaggerSchemaView
+from api.swaggers import SwaggerSchemaView
 
 
 schema_view = get_swagger_view(title='API Documents')

@@ -1,19 +1,21 @@
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework.schemas import SchemaGenerator, AutoSchema
-from rest_framework.views import APIView
-from rest_framework_swagger import renderers
+import coreapi
 
 
-class SwaggerSchemaView(APIView):
-    permission_classes = [AllowAny]
-    renderer_classes = [
-        renderers.OpenAPIRenderer,
-        renderers.SwaggerUIRenderer
-    ]
-
-    def get(self, request):
-        generator = SchemaGenerator()
-        schema = generator.get_schema(request=request)
-
-        return Response(schema)
+# purchase_schema = coreapi.Document(
+#     title='Business Search API',
+#     content={
+#         'search': coreapi.Link(
+#             url='/api/purchases/',
+#             action='get',
+#             fields=[
+#                 coreapi.Field(
+#                     name='account_name',
+#                     required=True,
+#                     location='query',
+#                     description='Search term'
+#                 ),
+#             ],
+#             description='Search business listings'
+#         )
+#     }
+# )

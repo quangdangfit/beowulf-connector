@@ -85,12 +85,19 @@ class TransferView(APIView):
 class PurchaseView(APIView):
     """
     get:
-    Get all purchase or get purchase by account_name.
+        Get all purchase or get purchase by account_name.
     post:
-    Create a new account instance.
+        Create a new account instance.
     """
 
     def get(self, request):
+        """
+        description: This API deletes/uninstalls a device.
+        parameters:
+          - name: account_name
+            type: string
+            required: false
+        """
         try:
             account_name = request.query_params.get('account_name')
             purchases = Purchase.objects.all()
