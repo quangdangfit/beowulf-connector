@@ -4,10 +4,12 @@ import hashlib
 import json
 import os
 from django.db import transaction
+from rest_framework import status
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from api.serializers import PurchaseSerializer
 from beowulf_connector import settings
 from beowulf_connector.wsgi import commit, creator
 from api.models import Account, Transfer, Purchase
@@ -16,6 +18,11 @@ from wallet_file.wallet_file import wallet_dir
 
 
 class AccountView(APIView):
+    """
+    post:
+    Create a new account instance.
+    """
+
     def post(self, request):
         sid = transaction.savepoint()
         try:
@@ -41,11 +48,11 @@ class AccountView(APIView):
             data["wallet"] = cipher_data
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data})
+            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
-            return Response(data={"msg": repr(e)}, status=500)
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class TransferView(APIView):
@@ -68,14 +75,21 @@ class TransferView(APIView):
             data = commit.transfer(receiver, amount, asset, fee, asset_fee, memo, sender)
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data})
+            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
-            return Response(data={"msg": repr(e)}, status=500)
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PurchaseView(APIView):
+    """
+    get:
+    Get all purchase or get purchase by account_name.
+    post:
+    Create a new account instance.
+    """
+
     def get(self, request):
         try:
             account_name = request.query_params.get('account_name')
@@ -85,16 +99,11 @@ class PurchaseView(APIView):
                 account_name = account_name.split(',')
                 purchases = purchases.filter(account_name__in=account_name)
 
-            data = [{
-                'account_name': p.account_name,
-                'surplus': p.surplus or 0,
-                'expired_date': p.expired_date or False,
-            } for p in purchases]
-
-            return Response(data={"msg": 'Success!', "data": data})
+            serializer = PurchaseSerializer(purchases, many=True)
+            return Response(data={"msg": 'Success!', "data": serializer.data}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response(data={"msg": repr(e)}, status=500)
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         sid = transaction.savepoint()
@@ -128,8 +137,8 @@ class PurchaseView(APIView):
             data['expired_date'] = expired_date
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data})
+            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
-            return Response(data={"msg": repr(e)}, status=500)
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
