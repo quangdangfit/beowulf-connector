@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
-from api.models import Purchase
+from api.models import Purchase, Account
+
+
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = ('username', 'password', 'email', 'host')
 
 
 class PurchaseSerializer(serializers.ModelSerializer):

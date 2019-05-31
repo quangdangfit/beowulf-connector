@@ -4,12 +4,13 @@ import hashlib
 import json
 import os
 from django.db import transaction
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from api.serializers import PurchaseSerializer
+from api.serializers import PurchaseSerializer, AccountSerializer
 from beowulf_connector import settings
 from beowulf_connector.wsgi import commit, creator
 from api.models import Account, Transfer, Purchase
@@ -23,24 +24,25 @@ class AccountView(APIView):
     Create a new account instance.
     """
 
+    @swagger_auto_schema(responses={200: AccountSerializer(many=True)})
     def post(self, request):
         sid = transaction.savepoint()
         try:
             request_data = request.data
-            username = request_data.get('username')
+            account_name = request_data.get('account_name')
             password = request_data.get('password')
             email = request_data.get('email')
             host = request_data.get('ip_host')
 
             password = hashlib.sha256(password.encode()).hexdigest()
-            Account.objects.create(username=username, password=password, email=email, host=host)
+            Account.objects.create(account_name=account_name, password=password, email=email, host=host)
 
-            data = commit.create_account_simple(account_name=username,
+            data = commit.create_account_simple(account_name=account_name,
                                                 creator=creator,
                                                 password_seed="password",
                                                 password_wallet=password)
 
-            wallet_filename = os.path.join(wallet_dir, username + ".json")
+            wallet_filename = os.path.join(wallet_dir, account_name + ".json")
 
             with open(wallet_filename) as json_data:
                 cipher_data = json.load(json_data)
