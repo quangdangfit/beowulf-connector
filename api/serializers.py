@@ -14,10 +14,10 @@ class AccountSerializer(serializers.ModelSerializer):
                   'expired_maintain')
 
     def get_available_capacity(self, obj):
-        return obj.total_capacity - obj.used_capacity
+        return obj.get_available_capacity()
 
     def get_maintain_fee(self, obj):
-        return obj.used_capacity * settings.MAINTAIN_FREE
+        return obj.get_maintain_fee()
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
