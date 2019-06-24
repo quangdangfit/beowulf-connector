@@ -1,10 +1,10 @@
 import datetime
+import logging
 
 import hashlib
 import json
 import os
 from django.db import transaction
-from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 
 from rest_framework.views import APIView
@@ -18,13 +18,28 @@ from api.models import Account, Transfer, Purchase
 from wallet_file.wallet_file import wallet_dir
 
 
+_logger = logging.getLogger('api')
+
+
 class AccountView(APIView):
     """
+    get:
+        Get account information
     post:
-    Create a new account instance.
+        Create a new account instance.
     """
 
-    @swagger_auto_schema(responses={200: AccountSerializer(many=True)})
+    def get(self, request):
+        try:
+            account_name = request.query_params.get('account_name')
+            account = Account.objects.filter(account_name=account_name)
+
+            serializer = AccountSerializer(account, many=True)
+            return Response(data={"msg": 'Success!', "data": serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def post(self, request):
         sid = transaction.savepoint()
         try:
@@ -32,7 +47,7 @@ class AccountView(APIView):
             account_name = request_data.get('account_name')
             password = request_data.get('password')
             email = request_data.get('email')
-            host = request_data.get('ip_host')
+            host = request_data.get('hostIP')
 
             password = hashlib.sha256(password.encode()).hexdigest()
             Account.objects.create(account_name=account_name, password=password, email=email, host=host)
@@ -54,6 +69,7 @@ class AccountView(APIView):
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
+            _logger.exception('[Create Account] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -93,13 +109,6 @@ class PurchaseView(APIView):
     """
 
     def get(self, request):
-        """
-        description: This API deletes/uninstalls a device.
-        parameters:
-          - name: account_name
-            type: string
-            required: false
-        """
         try:
             account_name = request.query_params.get('account_name')
             purchases = Purchase.objects.all()
@@ -119,35 +128,51 @@ class PurchaseView(APIView):
         try:
             request_data = request.data
 
-            account_name = request_data.get('sender')
-            receiver = creator
-            amount = request_data.get('amount')
-            memo = request_data.get('memo')
-            asset = settings.PURCHASE_ASSET
-            fee = settings.TRANSFER_FEE
-            asset_fee = settings.TRANSFER_ASSET_FEE
+            _account_name = request_data.get('sender')
+            try:
+                account = Account.objects.get(account_name=_account_name)
+            except Account.DoesNotExist:
+                return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Create Transfer for Purchase
-            Transfer.objects.create(sender=account_name, receiver=receiver, amount=amount, memo=memo, asset=asset)
+            _admin_account = creator
+            _type = request_data.get('type')
+            _code = request_data.get('code')
+            _memo = request_data.get('memo')
+            _asset = settings.PURCHASE_ASSET
+            _asset_fee = settings.TRANSFER_ASSET_FEE
 
-            # Create Purchase, get surplus if purchase is already exists, add surplus to amount
-            purchase = Purchase.objects.get_or_create(account_name=account_name)
-            amount += (purchase.surplus or 0)
+            if not _type:
+                return Response(data={"msg": "Please provide type of purchase!"}, status=status.HTTP_404_NOT_FOUND)
 
-            purchase_amount = settings.PURCHASE_AMOUNT
-            surplus = amount % purchase_amount
-            expired_date = datetime.datetime.now() + datetime.timedelta(days=(30 * int(amount / purchase_amount)))
-            purchase.surplus = surplus
-            purchase.expired_date = expired_date
-            purchase.save()
+            _amount = 0
+            _not_enough = False
+            if _type == 'maintain':
+                _amount = account.extend_maintenance()
+                if not _amount:
+                    _not_enough = True
+                else:
+                    # Create Transfer for Purchase
+                    Transfer.objects.create(sender=_account_name, receiver=_admin_account, amount=_amount, memo=_memo,
+                                            asset=_asset)
+
+            elif _type == 'purchase':
+                _amount = account.purchase_capacity(_code)
+                if not _amount:
+                    _not_enough = True
+                else:
+                    # Create Transfer for Purchase
+                    Transfer.objects.create(sender=_account_name, receiver=_admin_account, amount=_amount, memo=_memo,
+                                            asset=_asset)
+
+            if _not_enough:
+                return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             # Create Beowulf Transfer
-            data = commit.transfer(receiver, amount, asset, fee, asset_fee, memo, account_name)
-            data['expired_date'] = expired_date
-
+            data = commit.transfer(_admin_account, _amount, _asset, 0, _asset_fee, _memo, _account_name)
             transaction.savepoint_commit(sid)
             return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
+            _logger.exception('[Create Purchase] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
