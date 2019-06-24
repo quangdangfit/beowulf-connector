@@ -10,13 +10,15 @@ class AccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Account
-        fields = ('username', 'email', 'capacity', 'used_capacity', 'available_capacity', 'expired_maintain')
+        fields = ('username', 'email', 'total_capacity', 'used_capacity', 'available_capacity', 'maintain_fee',
+                  'expired_maintain')
 
     def get_available_capacity(self, obj):
-        return obj.capacity - obj.used_capacity
+        return obj.total_capacity - obj.used_capacity
 
     def get_maintain_fee(self, obj):
         return obj.used_capacity * settings.MAINTAIN_FREE
+
 
 class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:

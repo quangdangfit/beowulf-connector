@@ -9,7 +9,7 @@ class Account(models.Model):
     password = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
     host = models.CharField(max_length=50, unique=True, null=True)
-    capacity = models.FloatField(default=0)
+    total_capacity = models.FloatField(default=0)
     used_capacity = models.FloatField(default=0)
     expired_maintain = models.DateTimeField(default=datetime.datetime.now())
 
