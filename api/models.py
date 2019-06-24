@@ -1,3 +1,5 @@
+import datetime
+
 from django.db import models
 
 
@@ -6,7 +8,10 @@ class Account(models.Model):
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
-    host = models.CharField(max_length=50, unique=True)
+    host = models.CharField(max_length=50, unique=True, null=True)
+    capacity = models.FloatField(default=0)
+    used_capacity = models.FloatField(default=0)
+    expired_maintain = models.DateTimeField(default=datetime.datetime.now())
 
     def __str__(self):
         return self.username
@@ -25,7 +30,7 @@ class Transfer(models.Model):
     timestamp = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return "Transfer {} to {}".format(self.sender, self.receiver)
+        return "Transfer {0} to {1}".format(self.sender, self.receiver)
 
     class Meta:
         db_table = 'transfers'
@@ -38,8 +43,20 @@ class Purchase(models.Model):
     expired_date = models.DateTimeField()
 
     def __str__(self):
-        return "Purchase ".format(self.account_name)
+        return "Purchase {}".format(self.account_name)
 
     class Meta:
         db_table = 'purchases'
+        ordering = ['id']
+
+
+class Price(models.Model):
+    amount = models.IntegerField(default=0)
+    capacity = models.IntegerField(default=0)
+
+    def __str__(self):
+        return "Prices {0} - {1}".format(self.amount, self.capacity)
+
+    class Meta:
+        db_table = 'prices'
         ordering = ['id']

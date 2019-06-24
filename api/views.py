@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import hashlib
 import json
@@ -9,7 +10,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from api.serializers import PurchaseSerializer
+from api.serializers import PurchaseSerializer, AccountSerializer
 from beowulf_connector import settings
 from beowulf_connector.wsgi import commit, creator
 from api.models import Account, Transfer, Purchase
@@ -17,11 +18,26 @@ from api.models import Account, Transfer, Purchase
 from wallet_file.wallet_file import wallet_dir
 
 
+_logger = logging.getLogger('api')
+
 class AccountView(APIView):
     """
+    get:
+        Get account information
     post:
-    Create a new account instance.
+        Create a new account instance.
     """
+
+    def get(self, request):
+        try:
+            account_name = request.query_params.get('account_name')
+            account = Account.objects.filter(username=account_name)
+
+            serializer = AccountSerializer(account, many=True)
+            return Response(data={"msg": 'Success!', "data": serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         sid = transaction.savepoint()
@@ -30,7 +46,7 @@ class AccountView(APIView):
             username = request_data.get('username')
             password = request_data.get('password')
             email = request_data.get('email')
-            host = request_data.get('ip_host')
+            host = request_data.get('hostIP')
 
             password = hashlib.sha256(password.encode()).hexdigest()
             Account.objects.create(username=username, password=password, email=email, host=host)
@@ -52,6 +68,7 @@ class AccountView(APIView):
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
+            _logger.exception('[Create Account] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -91,13 +108,6 @@ class PurchaseView(APIView):
     """
 
     def get(self, request):
-        """
-        description: This API deletes/uninstalls a device.
-        parameters:
-          - name: account_name
-            type: string
-            required: false
-        """
         try:
             account_name = request.query_params.get('account_name')
             purchases = Purchase.objects.all()
@@ -148,4 +158,5 @@ class PurchaseView(APIView):
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
+            _logger.exception('[Create Purchase] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -143,3 +143,6 @@ TRANSFER_ASSET_FEE = os.environ.get('TRANSFER_ASSET_FEE', 'W')
 
 PURCHASE_AMOUNT = int(os.environ.get('PURCHASE_AMOUNT', 500))
 PURCHASE_ASSET = os.environ.get('PURCHASE_ASSET', 'BWF')
+
+MAINTAIN_DURATION = int(os.environ.get('MAINTAIN_DURATION', 6))
+MAINTAIN_FREE = int(os.environ.get('MAINTAIN_FREE', 5))
