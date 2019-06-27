@@ -30,23 +30,16 @@ class Account(models.Model):
     def get_available_capacity(self):
         return self.total_capacity - self.used_capacity
 
-    def get_maintain_fee(self):
+    def get_maintenance_fee(self):
         return self.used_capacity * settings.MAINTAIN_FREE
 
-    def update_maintain_duration(self):
+    def update_maintenance_duration(self):
         maintain_duration = settings.MAINTAIN_DURATION * 30
         if self.expired_maintain < datetime.datetime.now():
             self.expired_maintain = datetime.datetime.now() + datetime.timedelta(days=maintain_duration)
         else:
             self.expired_maintain += datetime.timedelta(days=maintain_duration)
         self.save()
-
-    def extend_maintenance(self):
-        maintain_amount = self.get_maintain_fee()
-        if self.get_balance() < maintain_amount:
-            return False
-        self.update_maintain_duration()
-        return maintain_amount
 
     def purchase_capacity(self, code):
         price = Price.get_price(code)

@@ -176,3 +176,39 @@ class PurchaseView(APIView):
             transaction.savepoint_rollback(sid)
             _logger.exception('[Create Purchase] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PurchaseMaintenanceView(APIView):
+    def post(self, request):
+        sid = transaction.savepoint()
+        try:
+            request_data = request.data
+
+            _account_name = request_data.get('sender')
+            try:
+                account = Account.objects.get(account_name=_account_name)
+            except Account.DoesNotExist:
+                return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
+
+            admin_account = creator
+            memo = request_data.get('memo')
+            asset = settings.PURCHASE_ASSET
+            asset_fee = settings.TRANSFER_ASSET_FEE
+
+            _not_enough = False
+            maintain_fee = account.get_maintenance_fee()
+            if account.get_balance() < maintain_fee:
+                return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintain_fee, memo=memo,
+                                    asset=asset)
+
+            # Create Beowulf Transfer
+            data = commit.transfer(admin_account, maintain_fee, asset, 0, asset_fee, memo, _account_name)
+            transaction.savepoint_commit(sid)
+            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            transaction.savepoint_rollback(sid)
+            _logger.exception('[Create Purchase] Error: ')
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
