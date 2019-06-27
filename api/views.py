@@ -198,6 +198,7 @@ class PurchaseMaintenanceView(APIView):
             _not_enough = False
             maintain_fee = account.get_maintenance_fee()
             if account.get_balance() < maintain_fee:
+                account.update_maintenance_duration()
                 return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintain_fee, memo=memo,
