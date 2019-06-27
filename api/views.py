@@ -1,4 +1,3 @@
-import datetime
 import logging
 
 import hashlib
@@ -13,7 +12,7 @@ from rest_framework.response import Response
 from api.serializers import PurchaseSerializer, AccountSerializer
 from beowulf_connector import settings
 from beowulf_connector.wsgi import commit, creator
-from api.models import Account, Transfer, Purchase
+from api.models import Account, Transfer, Purchase, Price
 
 from wallet_file.wallet_file import wallet_dir
 
@@ -22,13 +21,6 @@ _logger = logging.getLogger('api')
 
 
 class AccountView(APIView):
-    """
-    get:
-        Get account information
-    post:
-        Create a new account instance.
-    """
-
     def get(self, request):
         try:
             account_name = request.query_params.get('account_name')
@@ -101,13 +93,6 @@ class TransferView(APIView):
 
 
 class PurchaseView(APIView):
-    """
-    get:
-        Get all purchase or get purchase by account_name.
-    post:
-        Create a new account instance.
-    """
-
     def get(self, request):
         try:
             account_name = request.query_params.get('account_name')
@@ -128,47 +113,27 @@ class PurchaseView(APIView):
         try:
             request_data = request.data
 
-            _account_name = request_data.get('sender')
+            account_name = request_data.get('sender')
             try:
-                account = Account.objects.get(account_name=_account_name)
+                account = Account.objects.get(account_name=account_name)
             except Account.DoesNotExist:
                 return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
 
-            _admin_account = creator
-            _type = request_data.get('type')
-            _code = request_data.get('code')
-            _memo = request_data.get('memo')
-            _asset = settings.PURCHASE_ASSET
-            _asset_fee = settings.TRANSFER_ASSET_FEE
+            admin_account = creator
+            code = request_data.get('code')
+            memo = request_data.get('memo')
+            asset = settings.PURCHASE_ASSET
+            asset_fee = settings.TRANSFER_ASSET_FEE
 
-            if not _type:
-                return Response(data={"msg": "Please provide type of purchase!"}, status=status.HTTP_404_NOT_FOUND)
-
-            _amount = 0
-            _not_enough = False
-            if _type == 'maintain':
-                _amount = account.extend_maintenance()
-                if not _amount:
-                    _not_enough = True
-                else:
-                    # Create Transfer for Purchase
-                    Transfer.objects.create(sender=_account_name, receiver=_admin_account, amount=_amount, memo=_memo,
-                                            asset=_asset)
-
-            elif _type == 'purchase':
-                _amount = account.purchase_capacity(_code)
-                if not _amount:
-                    _not_enough = True
-                else:
-                    # Create Transfer for Purchase
-                    Transfer.objects.create(sender=_account_name, receiver=_admin_account, amount=_amount, memo=_memo,
-                                            asset=_asset)
-
-            if _not_enough:
+            price = Price.get_price(code)
+            amount = price.amount
+            if account.get_balance() < amount:
                 return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
-            # Create Beowulf Transfer
-            data = commit.transfer(_admin_account, _amount, _asset, 0, _asset_fee, _memo, _account_name)
+            Transfer.objects.create(sender=account_name, receiver=admin_account, amount=amount, memo=memo, asset=asset)
+            data = commit.transfer(admin_account, amount, asset, 0, asset_fee, memo, account_name)
+
+            account.total_capacity = price.capacity
             transaction.savepoint_commit(sid)
             return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
@@ -195,17 +160,16 @@ class PurchaseMaintenanceView(APIView):
             asset = settings.PURCHASE_ASSET
             asset_fee = settings.TRANSFER_ASSET_FEE
 
-            _not_enough = False
             maintain_fee = account.get_maintenance_fee()
             if account.get_balance() < maintain_fee:
-                account.update_maintenance_duration()
                 return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintain_fee, memo=memo,
                                     asset=asset)
 
-            # Create Beowulf Transfer
             data = commit.transfer(admin_account, maintain_fee, asset, 0, asset_fee, memo, _account_name)
+
+            account.update_maintenance_duration()
             transaction.savepoint_commit(sid)
             return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 

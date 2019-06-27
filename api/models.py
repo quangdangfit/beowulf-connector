@@ -41,15 +41,6 @@ class Account(models.Model):
             self.expired_maintain += datetime.timedelta(days=maintain_duration)
         self.save()
 
-    def purchase_capacity(self, code):
-        price = Price.get_price(code)
-        amount = price.amount
-        if self.get_balance() < amount:
-            return False
-        self.total_capacity += price.capacity
-        self.save()
-        return amount
-
 
 class Transfer(models.Model):
     sender = models.CharField(max_length=50)
