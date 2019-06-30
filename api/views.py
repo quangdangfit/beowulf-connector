@@ -9,10 +9,10 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from api.serializers import PurchaseSerializer, AccountSerializer
+from api.serializers import AccountSerializer
 from beowulf_connector import settings
-from beowulf_connector.wsgi import commit, creator
-from api.models import Account, Transfer, Purchase, Price
+from beowulf_connector.beowulf import commit, creator
+from api.models import Account, Transfer, Price
 
 from wallet_file.wallet_file import wallet_dir
 
@@ -65,6 +65,32 @@ class AccountView(APIView):
             _logger.exception('[Create Account] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def put(self, request, account_name):
+        sid = transaction.savepoint()
+        try:
+            request_data = request.data
+            used_capacity = float(request_data.get('used_capacity', '0'))
+
+            try:
+                account = Account.objects.get(account_name=account_name)
+            except Account.DoesNotExist:
+                return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
+
+            if used_capacity and used_capacity <= account.total_capacity:
+                account.used_capacity = used_capacity
+                account.save()
+            else:
+                return Response(data={"msg": "Used capacity must be less than total capacity!"},
+                                status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            transaction.savepoint_commit(sid)
+            return Response(data={"msg": 'Success!'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            transaction.savepoint_rollback(sid)
+            _logger.exception('[Update Account] Error: ')
+            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class TransferView(APIView):
     def post(self, request):
@@ -94,21 +120,6 @@ class TransferView(APIView):
 
 
 class PurchaseView(APIView):
-    def get(self, request):
-        try:
-            account_name = request.query_params.get('account_name')
-            purchases = Purchase.objects.all()
-
-            if account_name:
-                account_name = account_name.split(',')
-                purchases = purchases.filter(account_name__in=account_name)
-
-            serializer = PurchaseSerializer(purchases, many=True)
-            return Response(data={"msg": 'Success!', "data": serializer.data}, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     def post(self, request):
         sid = transaction.savepoint()
         try:
@@ -174,5 +185,5 @@ class PurchaseMaintenanceView(APIView):
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
-            _logger.exception('[Create Purchase] Error: ')
+            _logger.exception('[Create Purchase Maintenance] Error: ')
             return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,8 +1,6 @@
 from rest_framework import serializers
 
-from api.models import Purchase, Account
-from beowulf_connector import settings
-
+from api.models import Account
 
 class AccountSerializer(serializers.ModelSerializer):
     available_capacity = serializers.SerializerMethodField()
@@ -18,9 +16,3 @@ class AccountSerializer(serializers.ModelSerializer):
 
     def get_maintain_fee(self, obj):
         return obj.get_maintain_fee()
-
-
-class PurchaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Purchase
-        fields = ('account_name', 'expired_date', 'surplus')
