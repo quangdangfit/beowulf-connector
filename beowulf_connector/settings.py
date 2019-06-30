@@ -145,3 +145,6 @@ PURCHASE_ASSET = os.environ.get('PURCHASE_ASSET', 'BWF')
 
 MAINTAIN_DURATION = int(os.environ.get('MAINTAIN_DURATION', 180))
 MAINTAIN_FREE = float(os.environ.get('MAINTAIN_FREE', 0.1))
+
+GET_WORKER_DETAIL_URL = os.environ.get('GET_WORKER_DETAIL_URL', '')
+WORKER_PAY_AMOUNT = float(os.environ.get('WORKER_PAY_AMOUNT', '0'))
