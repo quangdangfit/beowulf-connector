@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from api.serializers import AccountSerializer
+from api.utils import randomString, generateAccountName
 from beowulf_connector import settings
 from beowulf_connector.beowulf import commit, creator
 from api.models import Account, Transfer, Price
@@ -36,10 +37,10 @@ class AccountView(APIView):
         sid = transaction.savepoint()
         try:
             request_data = request.data
-            account_name = request_data.get('account_name')
             password = request_data.get('password')
             email = request_data.get('email')
             worker_id = request_data.get('worker_id')
+            account_name = generateAccountName(worker_id)
 
             password = hashlib.sha256(password.encode()).hexdigest()
 
