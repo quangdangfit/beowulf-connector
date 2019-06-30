@@ -14,3 +14,5 @@ __pycache__/
 db.sqlite3
 api/migrations/
 tmp/
+build/
+dist/
