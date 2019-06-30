@@ -20,7 +20,7 @@ from api.views import AccountView, TransferView, PurchaseView, PurchaseMaintenan
 
 urlpatterns = [
     path('accounts/', AccountView.as_view()),
-    path('accounts/<str:account_name>', AccountView.as_view()),
+    path('accounts/<str:email>/', AccountView.as_view()),
     path('transfers/', TransferView.as_view()),
     path('purchases/', PurchaseView.as_view()),
     path('purchases/maintenance/', PurchaseMaintenanceView.as_view()),

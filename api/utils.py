@@ -12,10 +12,10 @@ def randomString(stringLength=5):
 
 
 def generateAccountName(stringLength=5, worker_id=None):
-    account_name = 'user0{}'.format(randomString(stringLength)) if worker_id else 'worker0{}'.format(
+    account_name = 'user0{}'.format(randomString(stringLength)) if not worker_id else 'worker0{}'.format(
         randomString(stringLength))
     while commit.beowulfd.get_account(account_name):
-        account_name = 'user0{}'.format(randomString(stringLength)) if worker_id else 'worker0{}'.format(
+        account_name = 'user0{}'.format(randomString(stringLength)) if not worker_id else 'worker0{}'.format(
             randomString(stringLength))
 
     return account_name

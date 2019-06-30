@@ -3,6 +3,7 @@ import logging
 import hashlib
 import json
 import os
+from beowulf.amount import Amount
 from django.db import transaction
 from rest_framework import status
 
@@ -24,14 +25,15 @@ _logger = logging.getLogger('api')
 class AccountView(APIView):
     def get(self, request):
         try:
-            account_name = request.query_params.get('account_name')
-            account = Account.objects.filter(account_name=account_name)
+            email = request.query_params.get('email')
+            account = Account.objects.filter(email=email)
 
             serializer = AccountSerializer(account, many=True)
-            return Response(data={"msg": 'Success!', "data": serializer.data}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0, "data": serializer.data},
+                            status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         sid = transaction.savepoint()
@@ -40,7 +42,7 @@ class AccountView(APIView):
             password = request_data.get('password')
             email = request_data.get('email')
             worker_id = request_data.get('worker_id')
-            account_name = generateAccountName(worker_id)
+            account_name = generateAccountName(worker_id=worker_id)
 
             password = hashlib.sha256(password.encode()).hexdigest()
 
@@ -59,25 +61,26 @@ class AccountView(APIView):
             data["wallet"] = cipher_data
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0, "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
             _logger.exception('[Create Account] Error: ')
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def put(self, request, account_name):
+    def put(self, request, email):
         sid = transaction.savepoint()
         try:
             request_data = request.data
             used_capacity = float(request_data.get('used_capacity', '0'))
 
             try:
-                account = Account.objects.get(account_name=account_name)
+                account = Account.objects.get(email=email)
             except Account.DoesNotExist:
-                return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(data={"msg": "Account does not exists!", "error_code": 404},
+                                status=status.HTTP_404_NOT_FOUND)
 
-            if used_capacity and used_capacity <= account.total_capacity:
+            if 0 <= used_capacity <= account.total_capacity:
                 account.used_capacity = used_capacity
                 account.save()
             else:
@@ -85,12 +88,12 @@ class AccountView(APIView):
                                 status=status.HTTP_406_NOT_ACCEPTABLE)
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!'}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
             _logger.exception('[Update Account] Error: ')
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class TransferView(APIView):
@@ -113,11 +116,11 @@ class TransferView(APIView):
             data = commit.transfer(receiver, amount, asset, fee, asset_fee, memo, sender)
 
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0, "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PurchaseView(APIView):
@@ -142,18 +145,26 @@ class PurchaseView(APIView):
 
             price = Price.get_price(code)
             amount = price.amount
+
+            from beowulf.account import Account as BeoAccount
+
+            beowulf_account = BeoAccount(account_name)
+            if beowulf_account and amount > Amount(beowulf_account['balance']).amount:
+                return Response(data={"msg": 'Balance is not enough!', "error_code": 406},
+                                status=status.HTTP_406_NOT_ACCEPTABLE)
+
             data = commit.transfer(admin_account, amount, asset, fee, asset_fee, memo, account_name)
             Transfer.objects.create(sender=account_name, receiver=admin_account, amount=amount, memo=memo, asset=asset)
 
             account.total_capacity = price.capacity
             account.save()
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0, "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
             _logger.exception('[Create Purchase] Error: ')
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PurchaseMaintenanceView(APIView):
@@ -175,16 +186,16 @@ class PurchaseMaintenanceView(APIView):
             fee = settings.TRANSFER_FEE
             asset_fee = settings.TRANSFER_ASSET_FEE
 
-            maintain_fee = account.get_maintenance_fee()
-            data = commit.transfer(admin_account, maintain_fee, asset, fee, asset_fee, memo, _account_name)
-            Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintain_fee, memo=memo,
+            maintenance_fee = account.get_maintenance_fee()
+            data = commit.transfer(admin_account, maintenance_fee, asset, fee, asset_fee, memo, _account_name)
+            Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintenance_fee, memo=memo,
                                     asset=asset)
 
             account.update_maintenance_duration()
             transaction.savepoint_commit(sid)
-            return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
+            return Response(data={"msg": 'Success!', "error_code": 0, "data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             transaction.savepoint_rollback(sid)
             _logger.exception('[Create Purchase Maintenance] Error: ')
-            return Response(data={"msg": repr(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={"msg": repr(e), "error_code": 500}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
