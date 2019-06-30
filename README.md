@@ -1,4 +1,4 @@
-# Get project and install requirements
+## Get project and install requirements
 
 * Update the packages list:
     ```bash
@@ -48,7 +48,7 @@
     
     - Setup **GET_WORKER_DETAIL_URL** to get workers detail for payment.
 
-# Beowulf installation
+## Beowulf installation
 
 * Get project:
     ```bash
@@ -60,7 +60,7 @@
     $ .venv/bin/python ../beowulfpy/setup.py install
     ```
 
-# Postgres installation
+## Postgres installation
 * Installation: [Postgres Install Page](https://www.postgresql.org/download/)
 
 ## Run Server for serving 
