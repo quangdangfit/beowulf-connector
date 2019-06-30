@@ -25,10 +25,6 @@ class Account(models.Model):
         db_table = 'accounts'
         ordering = ['id']
 
-    def get_balance(self):
-        beowulf_account = 0#commit.beowulfd.get_account(account=self.account_name)
-        return beowulf_account
-
     def get_available_capacity(self):
         return self.total_capacity - self.used_capacity
 
@@ -57,19 +53,6 @@ class Transfer(models.Model):
 
     class Meta:
         db_table = 'transfers'
-        ordering = ['id']
-
-
-class Purchase(models.Model):
-    account_name = models.CharField(max_length=50)
-    surplus = models.IntegerField(default=0)
-    expired_date = models.DateTimeField()
-
-    def __str__(self):
-        return "Purchase {}".format(self.account_name)
-
-    class Meta:
-        db_table = 'purchases'
         ordering = ['id']
 
 
