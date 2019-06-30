@@ -39,15 +39,16 @@ class AccountView(APIView):
             account_name = request_data.get('account_name')
             password = request_data.get('password')
             email = request_data.get('email')
-            host = request_data.get('hostIP')
+            worker_id = request_data.get('worker_id')
 
             password = hashlib.sha256(password.encode()).hexdigest()
-            Account.objects.create(account_name=account_name, password=password, email=email, host=host)
 
             data = commit.create_account_simple(account_name=account_name,
                                                 creator=creator,
                                                 password_seed="password",
                                                 password_wallet=password)
+
+            Account.objects.create(account_name=account_name, password=password, email=email, worker_id=worker_id)
 
             wallet_filename = os.path.join(wallet_dir, account_name + ".json")
 
@@ -121,19 +122,19 @@ class PurchaseView(APIView):
 
             admin_account = creator
             code = request_data.get('code')
-            memo = request_data.get('memo')
+            memo = "Purchase Capacity"
             asset = settings.PURCHASE_ASSET
+
+            fee = settings.TRANSFER_FEE
             asset_fee = settings.TRANSFER_ASSET_FEE
 
             price = Price.get_price(code)
             amount = price.amount
-            if account.get_balance() < amount:
-                return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
-
+            data = commit.transfer(admin_account, amount, asset, fee, asset_fee, memo, account_name)
             Transfer.objects.create(sender=account_name, receiver=admin_account, amount=amount, memo=memo, asset=asset)
-            data = commit.transfer(admin_account, amount, asset, 0, asset_fee, memo, account_name)
 
             account.total_capacity = price.capacity
+            account.save()
             transaction.savepoint_commit(sid)
             return Response(data={"msg": 'Success!', "data": data}, status=status.HTTP_200_OK)
 
@@ -156,18 +157,16 @@ class PurchaseMaintenanceView(APIView):
                 return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
 
             admin_account = creator
-            memo = request_data.get('memo')
+            memo = "Purchase Maintenance"
             asset = settings.PURCHASE_ASSET
+
+            fee = settings.TRANSFER_FEE
             asset_fee = settings.TRANSFER_ASSET_FEE
 
             maintain_fee = account.get_maintenance_fee()
-            if account.get_balance() < maintain_fee:
-                return Response(data={"msg": "Account balance is not enough"}, status=status.HTTP_406_NOT_ACCEPTABLE)
-
+            data = commit.transfer(admin_account, maintain_fee, asset, fee, asset_fee, memo, _account_name)
             Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintain_fee, memo=memo,
                                     asset=asset)
-
-            data = commit.transfer(admin_account, maintain_fee, asset, 0, asset_fee, memo, _account_name)
 
             account.update_maintenance_duration()
             transaction.savepoint_commit(sid)

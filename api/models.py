@@ -3,15 +3,17 @@ import datetime
 from django.db import models
 
 # Create your models here.
+from django.utils import timezone
+
 from beowulf_connector import settings
-from beowulf_connector.wsgi import commit
+# from beowulf_connector.wsgi import commit
 
 
 class Account(models.Model):
     account_name = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
-    host = models.CharField(max_length=50, unique=True, null=True)
+    worker_id = models.CharField(max_length=100, unique=True, null=True)
     total_capacity = models.FloatField(default=0)
     used_capacity = models.FloatField(default=0)
     expired_maintain = models.DateTimeField(default=datetime.datetime.now())
@@ -24,18 +26,18 @@ class Account(models.Model):
         ordering = ['id']
 
     def get_balance(self):
-        beowulf_account = commit.beowulfd.get_account(account=self.account_name)
+        beowulf_account = 0#commit.beowulfd.get_account(account=self.account_name)
         return beowulf_account
 
     def get_available_capacity(self):
         return self.total_capacity - self.used_capacity
 
     def get_maintenance_fee(self):
-        return self.used_capacity * settings.MAINTAIN_FREE
+        return self.total_capacity * settings.MAINTAIN_FREE
 
     def update_maintenance_duration(self):
-        maintain_duration = settings.MAINTAIN_DURATION * 30
-        if self.expired_maintain < datetime.datetime.now():
+        maintain_duration = settings.MAINTAIN_DURATION
+        if self.expired_maintain < timezone.now():
             self.expired_maintain = datetime.datetime.now() + datetime.timedelta(days=maintain_duration)
         else:
             self.expired_maintain += datetime.timedelta(days=maintain_duration)
@@ -45,7 +47,7 @@ class Account(models.Model):
 class Transfer(models.Model):
     sender = models.CharField(max_length=50)
     receiver = models.CharField(max_length=50)
-    amount = models.IntegerField(default=0)
+    amount = models.FloatField(default=0)
     memo = models.TextField()
     asset = models.CharField(max_length=50)
     timestamp = models.DateTimeField(auto_now=True)
@@ -73,8 +75,8 @@ class Purchase(models.Model):
 
 class Price(models.Model):
     code = models.CharField(max_length=50, unique=True)
-    amount = models.IntegerField(default=0)
-    capacity = models.IntegerField(default=0)
+    amount = models.FloatField(default=0)
+    capacity = models.FloatField(default=0)
 
     def __str__(self):
         return "Prices {0}".format(self.code)

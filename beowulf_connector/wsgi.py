@@ -39,6 +39,4 @@ for pub in wallet.getPublicKeys():
 if not wallet.getOwnerKeyForAccount(creator):
     wallet.addPrivateKey(active)
 
-# Beowulf
-
 application = get_wsgi_application()
