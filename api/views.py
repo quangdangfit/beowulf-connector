@@ -173,13 +173,14 @@ class PurchaseMaintenanceView(APIView):
         try:
             request_data = request.data
 
-            _account_name = request_data.get('sender')
+            sender_email = request_data.get('email')
             try:
-                account = Account.objects.get(account_name=_account_name)
+                account = Account.objects.get(email=sender_email)
             except Account.DoesNotExist:
                 return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
 
             admin_account = creator
+            sender_account_name = account.account_name
             memo = "Purchase Maintenance"
             asset = settings.PURCHASE_ASSET
 
@@ -187,9 +188,9 @@ class PurchaseMaintenanceView(APIView):
             asset_fee = settings.TRANSFER_ASSET_FEE
 
             maintenance_fee = account.get_maintenance_fee()
-            data = commit.transfer(admin_account, maintenance_fee, asset, fee, asset_fee, memo, _account_name)
-            Transfer.objects.create(sender=_account_name, receiver=admin_account, amount=maintenance_fee, memo=memo,
-                                    asset=asset)
+            data = commit.transfer(admin_account, maintenance_fee, asset, fee, asset_fee, memo, sender_account_name)
+            Transfer.objects.create(sender=sender_account_name, receiver=admin_account, amount=maintenance_fee,
+                                    memo=memo, asset=asset)
 
             account.update_maintenance_duration()
             transaction.savepoint_commit(sid)
