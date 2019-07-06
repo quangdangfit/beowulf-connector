@@ -81,7 +81,7 @@ class AccountView(APIView):
                                 status=status.HTTP_404_NOT_FOUND)
 
             if 0 <= used_capacity <= account.total_capacity:
-                account.used_capacity = used_capacity
+                account.used_capacity += used_capacity
                 account.save()
             else:
                 return Response(data={"msg": "Used capacity must be less than total capacity!"},
@@ -129,13 +129,14 @@ class PurchaseView(APIView):
         try:
             request_data = request.data
 
-            account_name = request_data.get('sender')
+            email = request_data.get('email')
             try:
-                account = Account.objects.get(account_name=account_name)
+                account = Account.objects.get(email=email)
             except Account.DoesNotExist:
                 return Response(data={"msg": "Account does not exists!"}, status=status.HTTP_404_NOT_FOUND)
 
             admin_account = creator
+            account_name = account.account_name
             code = request_data.get('code')
             memo = "Purchase Capacity"
             asset = settings.PURCHASE_ASSET
@@ -156,7 +157,7 @@ class PurchaseView(APIView):
             data = commit.transfer(admin_account, amount, asset, fee, asset_fee, memo, account_name)
             Transfer.objects.create(sender=account_name, receiver=admin_account, amount=amount, memo=memo, asset=asset)
 
-            account.total_capacity = price.capacity
+            account.total_capacity += price.capacity
             account.save()
             transaction.savepoint_commit(sid)
             return Response(data={"msg": 'Success!', "error_code": 0, "data": data}, status=status.HTTP_200_OK)

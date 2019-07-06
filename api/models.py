@@ -14,7 +14,7 @@ class Account(models.Model):
     password = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
     worker_id = models.CharField(max_length=100, unique=True, null=True)
-    total_capacity = models.FloatField(default=1.0)
+    total_capacity = models.FloatField(default=1024)
     used_capacity = models.FloatField(default=0)
     expired_maintain = models.DateTimeField(default=datetime.datetime.now())
 
